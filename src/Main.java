@@ -4,7 +4,9 @@ import com.googlecode.lanterna.terminal.Terminal;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Main {
@@ -42,39 +44,56 @@ public class Main {
         Player player = createPlayer(terminal);
         List<Attacker> attackers = new ArrayList<>();
         List<Bullet> bullets = new ArrayList<>();
-        final int timeCounterThreshold = 80;
-        int timeCounter = 0;
+        final int timeCounter1Threshold = 80;
+        final int timeCounter2Threshold = 20;
+        int attackerTimeCounter = 0;
+        int bulletTimeCounter = 0;
+        drawPlayer(terminal, player);
 
 
         while (isPlayerAlive(player, attackers)) {
 
             KeyStroke keyStroke;
 
+
             do {
                 Thread.sleep(5);
                 keyStroke = terminal.pollInput();
 
-                timeCounter++;
+                attackerTimeCounter++;
 
-                if (timeCounter >= timeCounterThreshold) {
-
-                    timeCounter = 0;
+                if (attackerTimeCounter >= timeCounter1Threshold) {
+                    attackerTimeCounter = 0;
 
                     addRandomAttackers(attackers, terminal);
-                    moveBullets(bullets);
                     moveAttackers(attackers);
                     stopAttackers(attackers, terminal);
                     drawAttackers(attackers, terminal);
-                    drawBullets(bullets, terminal);
-                    drawPlayer(terminal, player);
 
 
                     terminal.flush();
                 }
 
+                bulletTimeCounter++;
+
+                if (bulletTimeCounter >= timeCounter2Threshold) {
+                    bulletTimeCounter = 0;
+
+                    moveBullets(bullets);
+                    stopBullets(bullets, terminal);
+                    drawBullets(bullets, terminal);
+
+
+                    terminal.flush();
+                }
+                destroyAttackers(attackers, bullets, terminal);
+                terminal.flush();
+
+
             } while (keyStroke == null && isPlayerAlive(player, attackers));
 
-            addBullets(player, bullets, terminal, keyStroke);
+            fireBullets(player, bullets, terminal, keyStroke);
+
             if (isPlayerAlive(player, attackers)) {
                 movePlayer(player, keyStroke);
                 drawPlayer(terminal, player);
@@ -106,11 +125,13 @@ public class Main {
 
     private static void drawAttackers(List<Attacker> attackers, Terminal terminal) throws IOException {
 
-        terminal.clearScreen();
-
         for (Attacker attacker : attackers) {
+            terminal.setCursorPosition(attacker.getPreviousX(), attacker.getPreviousY());
+            terminal.putCharacter(' ');
+
             terminal.setCursorPosition(attacker.getX(), attacker.getY());
             terminal.putCharacter(attacker.getSymbol());
+
         }
 
     }
@@ -138,17 +159,17 @@ public class Main {
 
     private static void drawBullets(List<Bullet> bullets, Terminal terminal) throws IOException {
 
-        terminal.clearScreen();
-
         for (Bullet bullet : bullets) {
             if (bullet != null) {
+                terminal.setCursorPosition(bullet.getPreviousX(), bullet.getPreviousY());
+                terminal.putCharacter(' ');
                 terminal.setCursorPosition(bullet.getX(), bullet.getY());
                 terminal.putCharacter(bullet.getSymbol());
             }
         }
     }
 
-    private static void addBullets(Player player, List<Bullet> bullets, Terminal terminal, KeyStroke keyStroke) throws IOException, InterruptedException {
+    private static void fireBullets(Player player, List<Bullet> bullets, Terminal terminal, KeyStroke keyStroke) throws IOException, InterruptedException {
         if (keyStroke == null || keyStroke.getCharacter() == null) {
             return;
         } else {
@@ -170,9 +191,29 @@ public class Main {
         }
     }
 
+    private static void stopBullets(List<Bullet> bullets, Terminal terminal) throws IOException {
+        List<Bullet> bulletsToStop = new ArrayList<>();
+        for (Bullet bullet : bullets) {
+            if (bullet.getY() < 0
+                    || bullet.getX() < 0
+                    || bullet.getX() >= terminal.getTerminalSize().getColumns()) {
+                bulletsToStop.add(bullet);
+                terminal.setCursorPosition(bullet.getX(), bullet.getY());
+                terminal.putCharacter(' ');
+            }
+        }
+        bullets.removeAll(bulletsToStop);
+    }
+
     private static void moveBullets(List<Bullet> bullets) {
         for (Bullet bullet : bullets) {
-            bullet.moveUp();
+            if (bullet.getSymbol() == '\u219F') {
+                bullet.moveUp();
+            } else if (bullet.getSymbol() == '\u219E') {
+                bullet.moveLeft();
+            } else if (bullet.getSymbol() == '\u21A0') {
+                bullet.moveRight();
+            }
         }
     }
 
@@ -202,6 +243,42 @@ public class Main {
         return true;
     }
 
+    private static void destroyAttackers(List<Attacker> attackers, List<Bullet> bullets, Terminal terminal) throws IOException {
+//        List<Attacker> attackersToRemove = new ArrayList<>();
+//        List<Bullet> bulletsToRemove = new ArrayList<>();
+
+        Set<Attacker> attackersToRemove = new HashSet<>();
+        Set<Bullet> bulletsToRemove = new HashSet<>();
+        for (Attacker attacker : attackers) {
+            for (Bullet bullet : bullets) {
+                if (attacker.getX() == bullet.getX() &&
+                        ( attacker.getY() == bullet.getY() ||
+                          attacker.getY()-1 == bullet.getY()
+                        )
+                ) {
+                    attackersToRemove.add(attacker);
+                    bulletsToRemove.add(bullet);
+//                    terminal.setCursorPosition(attacker.getX(), attacker.getY());
+//                    terminal.putCharacter(' ');
+//                    terminal.setCursorPosition(bullet.getX(), bullet.getY());
+//                    terminal.putCharacter(' ');
+
+                }
+            }
+        }
+
+        for (Bullet bullet : bulletsToRemove) {
+            terminal.setCursorPosition(bullet.getX(), bullet.getY());
+            terminal.putCharacter(' ');
+        }
+        for (Attacker attacker : attackersToRemove) {
+            terminal.setCursorPosition(attacker.getX(), attacker.getY());
+            terminal.putCharacter(' ');
+        }
+
+        attackers.removeAll(attackersToRemove);
+        bullets.removeAll(bulletsToRemove);
+    }
 }
 // addBullets
 
