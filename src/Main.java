@@ -39,13 +39,14 @@ public class Main {
 
     private static void gameLoop(Terminal terminal) throws IOException, InterruptedException {
 
-        Player player = createPlayer();
+        Player player = createPlayer(terminal);
         List<Attacker> attackers = new ArrayList<>();
+        List<Bullet> bullets = new ArrayList<>();
         final int timeCounterThreshold = 80;
         int timeCounter = 0;
 
 
-        while (true) {
+        while (isPlayerAlive(player, attackers)) {
 
             KeyStroke keyStroke;
 
@@ -59,18 +60,26 @@ public class Main {
 
                     timeCounter = 0;
 
-                    addRandomAttackers(attackers);
+                    addBullets(player, bullets, terminal, keyStroke);
+                    moveBullets(bullets);
+                    drawBullets(bullets, terminal);
+                    addRandomAttackers(attackers, terminal);
                     moveAttackers(attackers);
+                    stopAttackers(attackers, terminal);
                     drawAttackers(attackers, terminal);
                     drawPlayer(terminal, player);
+
 
                     terminal.flush();
                 }
 
-            } while (keyStroke == null);
+            } while (keyStroke == null && isPlayerAlive(player, attackers));
 
-            movePlayer(player, keyStroke);
-            drawPlayer(terminal, player);
+            if (isPlayerAlive(player, attackers)) {
+                movePlayer(player, keyStroke);
+                drawPlayer(terminal, player);
+
+            }
 
             terminal.flush();
 
@@ -78,15 +87,16 @@ public class Main {
 
     }
 
-    private static Player createPlayer() {
+    private static Player createPlayer(Terminal terminal) throws IOException {
 
-        return new Player(40, 40, '\u04C1');
+        return new Player(terminal.getTerminalSize().getColumns() / 2, terminal.getTerminalSize().getRows() - 1, '\u04C1');
 
     }
 
 //    attacker: \u2362 or \u2182
 //    player: \u04C1
-//    up arrow: \u219F
+//    up arrow: \
+
 //    left arrow: \u219E
 //    right arrow: \u21A0
 
@@ -100,6 +110,7 @@ public class Main {
 
     }
 
+
     private static void drawAttackers(List<Attacker> attackers, Terminal terminal) throws IOException {
 
         terminal.clearScreen();
@@ -111,14 +122,73 @@ public class Main {
 
     }
 
-    private static void addRandomAttackers(List<Attacker> attackers) {
+    private static void addRandomAttackers(List<Attacker> attackers, Terminal terminal) throws IOException {
 
         double probability = ThreadLocalRandom.current().nextDouble();
 
         if (probability <= 0.4) {
-            attackers.add(new Attacker(ThreadLocalRandom.current().nextInt(180), 0, '\u2362'));
+            attackers.add(new Attacker(ThreadLocalRandom.current().nextInt(terminal.getTerminalSize().getColumns()), 0, '\u2362'));
+
         }
 
+    }
+
+    private static void stopAttackers(List<Attacker> attackers, Terminal terminal) throws IOException {
+        List<Attacker> attackersToStop = new ArrayList<>();
+        for (Attacker attacker : attackers) {
+            if (attacker.getY() >= terminal.getTerminalSize().getRows()) {
+                attackersToStop.add(attacker);
+            }
+        }
+        attackers.removeAll(attackersToStop);
+    }
+
+    private static void drawBullets(List<Bullet> bullets, Terminal terminal) throws IOException {
+
+        terminal.clearScreen();
+
+        for (Bullet bullet : bullets) {
+            if (bullet != null) {
+                terminal.setCursorPosition(bullet.getX(), bullet.getY());
+                terminal.putCharacter(bullet.getSymbol());
+            }
+        }
+
+    }
+
+    private static void addBullets(Player player, List<Bullet> bullets, Terminal terminal, KeyStroke keyStroke) throws IOException, InterruptedException {
+        Character character = keyStroke.getCharacter();
+//        switch (keyStroke.getCharacter()) {
+//  /*          case 'q':
+//                bullets.add(new Bullet(player.getX()-1,player.getY(), '\u219E'));
+//                break;*/
+//            case Character.valueOf('w'):
+//                bullets.add(new Bullet(player.getX(), player.getY() - 1, '\u219F'));
+//                System.out.println(" pressed w");
+//                break;
+///*            case 'e':
+//                bullets.add(new Bullet(player.getX()+1,player.getY(), '\u21A0'));
+//                break;*/
+//            default:
+//                break;
+//
+//        }
+        do {
+            Thread.sleep(5);
+            keyStroke = terminal.pollInput();
+        } while (keyStroke == null);
+
+        if (character == Character.valueOf('w')) {
+            bullets.add(new Bullet(player.getX(), player.getY() - 1, '\u219F'));
+            System.out.println(" pressed w");
+        }
+    }
+
+    private static void moveBullets(List<Bullet> bullets) {
+        for (Bullet bullet : bullets) {
+            bullet.moveUp();
+
+        }
     }
 
     private static void movePlayer(Player player, KeyStroke keyStroke) {
@@ -138,15 +208,13 @@ public class Main {
         }
     }
 
-//    private static KeyStroke getUserKeyStroke(Terminal terminal) throws InterruptedException, IOException {
-//
-//        KeyStroke keyStroke;
-//        do {
-//            Thread.sleep(5);
-//            keyStroke = terminal.pollInput();
-//        } while (keyStroke == null);
-//        return keyStroke;
-//
-//    }
+    private static boolean isPlayerAlive(Player player, List<Attacker> attackers) {
+        for (Attacker attacker : attackers) {
+            if (attacker.getX() == player.getX() && attacker.getY() == player.getY()) {
+                return false;
+            }
+        }
+        return true;
+    }
 
 }
