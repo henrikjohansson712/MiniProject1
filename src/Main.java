@@ -1,5 +1,5 @@
+import com.googlecode.lanterna.SGR;
 import com.googlecode.lanterna.TextColor;
-import com.googlecode.lanterna.graphics.TextGraphics;
 import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
 import com.googlecode.lanterna.terminal.Terminal;
@@ -10,13 +10,16 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class Main {
 
-    static long scoreCounter = 0;
+    private static long scoreCounter = 0;
 
     public static void main(String[] args) {
 
         try {
+
             startGame();
+
         } catch (IOException | InterruptedException e) {
+
             e.printStackTrace();
             System.exit(1);
         }
@@ -30,9 +33,11 @@ public class Main {
     }
 
     private static Terminal createTerminal() throws IOException {
+
         DefaultTerminalFactory terminalFactory = new DefaultTerminalFactory();
         Terminal terminal = terminalFactory.createTerminal();
         terminal.setCursorVisible(false);
+
         return terminal;
     }
 
@@ -49,19 +54,21 @@ public class Main {
         int bulletTimeCounter = 0;
 
         terminal.setCursorPosition((terminal.getTerminalSize().getColumns() / 2) - 18, (terminal.getTerminalSize().getRows() / 2) - 2);
-        terminal.setBackgroundColor(TextColor.ANSI.BLACK);
-        terminal.setForegroundColor(TextColor.ANSI.RED);
+        terminal.setForegroundColor(TextColor.ANSI.CYAN);
+        terminal.enableSGR(SGR.BOLD);
         String fatalError = "FatalError Games Proudly Presents...";
+
         for (char c : fatalError.toCharArray()) {
             terminal.putCharacter(c);
         }
+
         terminal.setCursorPosition((terminal.getTerminalSize().getColumns() / 2) - 7, (terminal.getTerminalSize().getRows() / 2) - 1);
-        terminal.setBackgroundColor(TextColor.ANSI.BLACK);
-        terminal.setForegroundColor(TextColor.ANSI.RED);
         String gameTitle = "Spejs Intruders";
+
         for (char c : gameTitle.toCharArray()) {
             terminal.putCharacter(c);
         }
+        terminal.resetColorAndSGR();
         Thread.sleep(5000);
         terminal.clearScreen();
 
@@ -72,6 +79,7 @@ public class Main {
             KeyStroke keyStroke;
 
             do {
+
                 Thread.sleep(5);
                 keyStroke = terminal.pollInput();
 
@@ -100,12 +108,13 @@ public class Main {
 
                     terminal.flush();
                 }
+
                 destroyAttackers(attackers, bullets, terminal);
                 terminal.flush();
 
             } while (keyStroke == null && isPlayerAlive(player, attackers, terminal));
 
-            fireBullets(player, bullets, terminal, keyStroke);
+            fireBullets(player, bullets, keyStroke);
 
             if (isPlayerAlive(player, attackers, terminal)) {
                 movePlayer(player, keyStroke);
@@ -114,6 +123,20 @@ public class Main {
 
             terminal.flush();
         }
+
+        terminal.setBackgroundColor(TextColor.ANSI.BLACK);
+        terminal.setForegroundColor(TextColor.ANSI.RED);
+        terminal.enableSGR(SGR.BOLD);
+        terminal.enableSGR(SGR.BLINK);
+        String gameOver = "Game Over!";
+
+        for (char c : gameOver.toCharArray()) {
+            terminal.putCharacter(c);
+        }
+
+        terminal.resetColorAndSGR();
+        terminal.flush();
+
     }
 
     private static Player createPlayer(Terminal terminal) throws IOException {
@@ -132,6 +155,7 @@ public class Main {
     }
 
     private static void movePlayer(Player player, KeyStroke keyStroke) {
+
         switch (keyStroke.getKeyType()) {
             case ArrowLeft:
                 player.moveLeft();
@@ -143,26 +167,22 @@ public class Main {
     }
 
     private static boolean isPlayerAlive(Player player, List<Attacker> attackers, Terminal terminal) throws IOException {
+
         for (Attacker attacker : attackers) {
+
             if ((attacker.getX() == player.getX() && attacker.getY() == player.getY()) || scoreCounter <= -100) {
                 terminal.setCursorPosition((terminal.getTerminalSize().getColumns() / 2) - 5, (terminal.getTerminalSize().getRows() / 2) - 2);
-                terminal.setBackgroundColor(TextColor.ANSI.BLACK);
-                terminal.setForegroundColor(TextColor.ANSI.RED);
-                String gameOver = "Game Over!";
-                for (char c : gameOver.toCharArray()) {
-                    terminal.putCharacter(c);
-                }
                 return false;
             }
         }
         return true;
     }
 
-    private static void fireBullets(Player player, List<Bullet> bullets, Terminal terminal, KeyStroke keyStroke) throws IOException, InterruptedException {
+    private static void fireBullets(Player player, List<Bullet> bullets, KeyStroke keyStroke) {
+
         if (keyStroke == null || keyStroke.getCharacter() == null) {
             return;
         } else {
-
             switch (keyStroke.getCharacter()) {
                 case 'q':
                     bullets.add(new Bullet(player.getX() - 1, player.getY(), '\u219E'));
@@ -182,6 +202,7 @@ public class Main {
     private static void drawBullets(List<Bullet> bullets, Terminal terminal) throws IOException {
 
         for (Bullet bullet : bullets) {
+
             if (bullet != null) {
                 terminal.setCursorPosition(bullet.getPreviousX(), bullet.getPreviousY());
                 terminal.putCharacter(' ');
@@ -193,7 +214,9 @@ public class Main {
     }
 
     private static void moveBullets(List<Bullet> bullets) {
+
         for (Bullet bullet : bullets) {
+
             if (bullet.getSymbol() == '\u219F') {
                 bullet.moveUp();
             } else if (bullet.getSymbol() == '\u219E') {
@@ -205,8 +228,11 @@ public class Main {
     }
 
     private static void stopBullets(List<Bullet> bullets, Terminal terminal) throws IOException {
+
         List<Bullet> bulletsToStop = new ArrayList<>();
+
         for (Bullet bullet : bullets) {
+
             if (bullet.getY() < 0
                     || bullet.getX() < 0
                     || bullet.getX() >= terminal.getTerminalSize().getColumns()) {
@@ -240,7 +266,9 @@ public class Main {
     }
 
     private static void moveAttackers(List<Attacker> attackers, Terminal terminal) throws IOException {
+
         for (Attacker attacker : attackers) {
+
             if (attacker.getY() < terminal.getTerminalSize().getRows() - 1) {
                 attacker.attack();
             }
@@ -250,7 +278,9 @@ public class Main {
     private static void stopAttackers(List<Attacker> attackers, Terminal terminal) throws IOException {
 
         List<Attacker> attackersToStop = new ArrayList<>();
+
         for (Attacker attacker : attackers) {
+
             if (attacker.getY() == terminal.getTerminalSize().getRows() - 1) {
                 attackersToStop.add(attacker);
                 terminal.setCursorPosition(attacker.getX(), attacker.getY());
@@ -260,6 +290,7 @@ public class Main {
 
         for (Attacker attacker : attackersToStop) {
             attacker.countdownToRemove();
+
             if (attacker.countdownToRemove() <= 0) {
                 scoreCounter -= 10;
                 attackers.remove(attacker);
@@ -273,13 +304,13 @@ public class Main {
 
         Set<Attacker> attackersToRemove = new HashSet<>();
         Set<Bullet> bulletsToRemove = new HashSet<>();
+
         for (Attacker attacker : attackers) {
+
             for (Bullet bullet : bullets) {
-                if (attacker.getX() == bullet.getX() &&
-                        (attacker.getY() == bullet.getY() ||
-                                attacker.getY() - 1 == bullet.getY()
-                        )
-                ) {
+
+                if (attacker.getX() == bullet.getX()
+                        && (attacker.getY() == bullet.getY() || attacker.getY() - 1 == bullet.getY())) {
                     scoreCounter += 10;
                     attackersToRemove.add(attacker);
                     bulletsToRemove.add(bullet);
@@ -291,6 +322,7 @@ public class Main {
             terminal.setCursorPosition(bullet.getX(), bullet.getY());
             terminal.putCharacter(' ');
         }
+
         for (Attacker attacker : attackersToRemove) {
             terminal.setCursorPosition(attacker.getX(), attacker.getY());
             terminal.putCharacter(' ');
@@ -301,21 +333,31 @@ public class Main {
     }
 
     private static void drawScore(Terminal terminal) throws IOException {
+
         terminal.setCursorPosition(0, 0);
+        terminal.enableSGR(SGR.BOLD);
         terminal.setForegroundColor(TextColor.ANSI.WHITE);
+
         String score = "Score: ";
         String blanks = "    ";
         String scorePoints = Long.toString(scoreCounter);
+
         for (char c : score.toCharArray()) {
             terminal.putCharacter(c);
         }
+
         terminal.setCursorPosition(score.length(), 0);
+
         for (char c : blanks.toCharArray()) {
             terminal.putCharacter(c);
         }
+
         terminal.setCursorPosition(score.length(), 0);
+
         for (char c : scorePoints.toCharArray()) {
             terminal.putCharacter(c);
         }
+
+        terminal.resetColorAndSGR();
     }
 }
