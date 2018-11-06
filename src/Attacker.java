@@ -5,6 +5,7 @@ public class Attacker {
     private char symbol;
     private int previousX;
     private int previousY;
+    private int startTime = 15;
 
 
 
@@ -41,4 +42,9 @@ public class Attacker {
         y++;
     }
 
+    public int countdownToRemove (){
+        return startTime --;
+
+
+    }
 }

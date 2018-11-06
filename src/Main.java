@@ -1,12 +1,10 @@
+import com.googlecode.lanterna.graphics.TextGraphics;
 import com.googlecode.lanterna.input.KeyStroke;
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
 import com.googlecode.lanterna.terminal.Terminal;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class Main {
@@ -42,12 +40,15 @@ public class Main {
     private static void gameLoop(Terminal terminal) throws IOException, InterruptedException {
 
         Player player = createPlayer(terminal);
+
         List<Attacker> attackers = new ArrayList<>();
         List<Bullet> bullets = new ArrayList<>();
-        final int timeCounter1Threshold = 80;
-        final int timeCounter2Threshold = 20;
+
+        final int attackerTimeCounterThreshold = 80;
+        final int bulletTimeCounterThreshold = 20;
         int attackerTimeCounter = 0;
         int bulletTimeCounter = 0;
+
         drawPlayer(terminal, player);
 
 
@@ -62,11 +63,11 @@ public class Main {
 
                 attackerTimeCounter++;
 
-                if (attackerTimeCounter >= timeCounter1Threshold) {
+                if (attackerTimeCounter >= attackerTimeCounterThreshold) {
                     attackerTimeCounter = 0;
 
                     addRandomAttackers(attackers, terminal);
-                    moveAttackers(attackers);
+                    moveAttackers(attackers, terminal);
                     stopAttackers(attackers, terminal);
                     drawAttackers(attackers, terminal);
 
@@ -74,9 +75,10 @@ public class Main {
                     terminal.flush();
                 }
 
+
                 bulletTimeCounter++;
 
-                if (bulletTimeCounter >= timeCounter2Threshold) {
+                if (bulletTimeCounter >= bulletTimeCounterThreshold) {
                     bulletTimeCounter = 0;
 
                     moveBullets(bullets);
@@ -103,7 +105,6 @@ public class Main {
             terminal.flush();
 
         }
-
     }
 
     private static Player createPlayer(Terminal terminal) throws IOException {
@@ -122,7 +123,6 @@ public class Main {
 
     }
 
-
     private static void drawAttackers(List<Attacker> attackers, Terminal terminal) throws IOException {
 
         for (Attacker attacker : attackers) {
@@ -133,7 +133,6 @@ public class Main {
             terminal.putCharacter(attacker.getSymbol());
 
         }
-
     }
 
     private static void addRandomAttackers(List<Attacker> attackers, Terminal terminal) throws IOException {
@@ -144,17 +143,34 @@ public class Main {
             attackers.add(new Attacker(ThreadLocalRandom.current().nextInt(terminal.getTerminalSize().getColumns()), 0, '\u2362'));
 
         }
-
     }
 
-    private static void stopAttackers(List<Attacker> attackers, Terminal terminal) throws IOException {
+    private static void stopAttackers(List<Attacker> attackers, Terminal terminal) throws IOException, InterruptedException {
+        System.out.println("Start of stopAttackers");
+
         List<Attacker> attackersToStop = new ArrayList<>();
         for (Attacker attacker : attackers) {
-            if (attacker.getY() >= terminal.getTerminalSize().getRows()) {
+            if (attacker.getY() == terminal.getTerminalSize().getRows() - 1) {
                 attackersToStop.add(attacker);
+                terminal.setCursorPosition(attacker.getX(), attacker.getY());
+                terminal.putCharacter(' ');
             }
         }
-        attackers.removeAll(attackersToStop);
+
+        for (Attacker attacker : attackersToStop) {
+            attacker.countdownToRemove();
+            System.out.println(attacker.countdownToRemove());
+            if(attacker.countdownToRemove() <= 0){
+                attackers.remove(attacker);
+                terminal.setCursorPosition(attacker.getX(), attacker.getY());
+                terminal.putCharacter(' ');
+            }
+
+
+        }
+
+//        attackers.removeAll(attackersToStop);
+        System.out.println(attackers.size());
     }
 
     private static void drawBullets(List<Bullet> bullets, Terminal terminal) throws IOException {
@@ -228,9 +244,11 @@ public class Main {
         }
     }
 
-    private static void moveAttackers(List<Attacker> attackers) {
+    private static void moveAttackers(List<Attacker> attackers, Terminal terminal) throws IOException {
         for (Attacker attacker : attackers) {
-            attacker.attack();
+            if (attacker.getY() < terminal.getTerminalSize().getRows() - 1) {
+                attacker.attack();
+            }
         }
     }
 
@@ -252,8 +270,8 @@ public class Main {
         for (Attacker attacker : attackers) {
             for (Bullet bullet : bullets) {
                 if (attacker.getX() == bullet.getX() &&
-                        ( attacker.getY() == bullet.getY() ||
-                          attacker.getY()-1 == bullet.getY()
+                        (attacker.getY() == bullet.getY() ||
+                                attacker.getY() - 1 == bullet.getY()
                         )
                 ) {
                     attackersToRemove.add(attacker);
